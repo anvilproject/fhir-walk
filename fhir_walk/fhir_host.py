@@ -12,21 +12,6 @@ from ncpi_fhir_utility.client import FhirApiClient
 
 from pprint import pformat
 
-
-# 90% Certain this is dead code. Will prune it once I've verified
-"""
-fhir_server = None
-
-def SetAuthorization(environ = None):
-    global fhir_server
-
-    if environ is not None:
-        print(f"Setting Authorization to {environ}")
-
-    fhir_server = Config.config(environ)
-    return fhir_server
-"""
-
 class FhirResult:
     """Wrap the return value a bit to make interacting with it a bit more smoother"""
     def __init__(self, payload):
