@@ -9,7 +9,10 @@ race
 study 		- The study "id", which is usually just a short study name
 dbgap_study_id
 dbgap_id 
+
 """
+
+# TODO -- Add support for extended family
 
 from re import compile
 

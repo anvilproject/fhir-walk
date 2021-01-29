@@ -19,39 +19,46 @@ from pathlib import Path
 from fhir_walk.fhir_host import FhirHost 
 
 home = Path.home()
+cwd = Path(os.getcwd())
 
 class DataConfig:
     """Store dataset and host details in home directory to allow users to deploy each dataset to different hosts with minimal effort."""
 
     _cfg = None     # Cheesy Singleton to allow downstream objects to acquire the preconfigured environment
 
-    def __init__(self, config_file = None, dataroot=None ):
+    def __init__(self, data_config=None, host_config=None, dataroot=None ):
         """We'll permit client applications to use an alternate storage mechanism for the configurat details.
 
         * config_file is the actual yaml config
         * dataroot is the 'root' directory where the datasets can be found
         """
-        if config_file is None:
-            config_file =  home / ".ncpi_fhir_rc"
+        if host_config is None:
+            host_config = home/".ncpi_fhir_rc"
+
+        if data_config is None:
+            data_config =  cwd / ".ncpi_fhir_rc"
 
         self.hosts = {}
         self.datasets = {}
         self.dataroot = None
-        self.filename = config_file
+        self.filenames = [host_config, data_config]
         self.cur_environment = 'dev'
         self.host_cache = None
 
-        use_default = not self._load_cfg(config_file)
+        use_default = not self._load_cfg(host_config, data_config)
 
-        if use_default:
-            with open(config_file, 'wt') as f:
+        if len(self.hosts) == 0 or self.dataroot is None:
+            with open(host_file, 'wt') as f:
                 f.write(f"""hosts:
     dev:
         username: {os.getenv('FHIR_USERNAME', 'admin')}
         password: {os.getenv('FHIR_PASSWORD', 'password')}
         target_service_url: {os.getenv('FHIR_HOST', 'http://localhost:8000')}
-dataroot: {Path.cwd()}
-datasets:
+dataroot: {Path.cwd()}""")
+            print(f"Default hosts file written to '{str(host_file)}'.")
+        if len(self.datasets) == 0:
+            with open(data_config, 'wt') as f:
+                f.write(f"""datasets:
     FAKE-CMG:
         sample: example-cmg/FakeData_CMG_Sample.tsv
         family: example-cmg/FakeData_CMG_Family.tsv
@@ -59,8 +66,7 @@ datasets:
         discovery: example-cmg/FakeData_CMG_Discovery.tsv
         sequencing: example-cmg/FakeData_CMG_Sequencing.tsv
 """)
-            if self._load_cfg(config_file):
-                print(f"A fresh configuration was generated at the path: '{str(config_file)}'.")
+            print(f"A fresh datasets was generated at the path: '{str(data_config)}'.")
 
     def set_host(self, env='dev'):
         """TODO- Should we support having multiple hosts active at once? Currently, there isn't a clear cut use case for it"""
@@ -84,18 +90,27 @@ datasets:
         """Return the FhirHost object"""
         return self.host
 
-    def _load_cfg(self, filename=None):
+    def _load_cfg(self, host_config=None, data_config=None):
         """Loads configuration (filename=None will load the default)"""
-        if filename is None:
-            filename = self.filename
+        if host_config is None:
+            host_config = self.host_config
+        if data_config is None:
+            data_config = self.data_config
+        successes = 0
 
-        config = safe_load(open(filename, 'rt'))
+        config = safe_load(open(host_config, 'rt'))
         if config:
             self.hosts = config['hosts']
             self.dataroot = config['dataroot']
-            self.datasets = config['datasets']
+            if 'datasets' in config:
+                self.datasets = config['datasets']
+            successes += 1
 
-            return True
+        config = safe_load(open(data_config, 'rt'))
+        if config:
+            self.datasets = config['datasets']
+            successes += 1
+        
         return False
 
     # TBD Having issues with dumping some things to YAML 

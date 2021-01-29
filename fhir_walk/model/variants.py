@@ -53,6 +53,7 @@ class VariantReport:
 
 	@classmethod
 	def VariantReportsBySubject(cls, subject_id, host):
+		print(f"DiagnosticReport?subject=Patient/{subject_id}")
 		payload = host.get(f"DiagnosticReport?subject=Patient/{subject_id}")
 
 		reports = []

@@ -10,7 +10,8 @@ class ResearchStudy:
 		self.raw = data
 		self.id = data['resource']['id']
 		self.identifiers = data['resource']['identifier']
-		self.title = data['resource']['title']
+		if 'title' in data['resource']:
+			self.title = data['resource']['title']
 
 	@classmethod
 	def Studies(cls, host):
