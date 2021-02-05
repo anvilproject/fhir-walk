@@ -2,11 +2,20 @@
 
 """Rudimentary tool for exploring an NCPI fhir resource's contents"""
 
-import pdb
-#pdb.set_trace()
+"""This script can be used to interactively explore data in a fhir server, as long as it conforms to the current NCPI FHIR model. Users can choose a study to inspect and iteratively look at subjects and their related Disease/Phenotype/Variant information"""
+
+"""More useful, perhaps, is that it provides an example of using the OO wrapper library I wrote for eploying unit tests for my ingestion scripts
+
+Currently, the "display" assumes a fairly wide terminal (probably 100 characters or so)
+
+The philosphy behind the walker library is largely to pull only what is needed. So, if you get all studies, you really only get the information required to query the server for the relevant subjects. For intermediate objects, like ResearchSubject, that information gets absorbed into the Patient objects, rather than being captured as standalone objects. 
+
+"""
+
 import sys
 from argparse import ArgumentParser, FileType
 from urllib.parse import urlparse
+
 from ncpi_fhir_utility.client import FhirApiClient
 
 from fhir_walk.config import DataConfig 
@@ -15,14 +24,16 @@ from fhir_walk.fhir_host import FhirHost
 from fhir_walk.model.research_study import ResearchStudy
 from fhir_walk.model.sequencing_data import SequencingData
 from fhir_walk.model.variants import Variant, CODES
+
 import random
+
 from shutil import get_terminal_size
-termsize = get_terminal_size()
 
 from argparse import ArgumentParser, FileType
 from colorama import init,Fore,Back,Style
 init()
 
+# Simple wrappers to help format printed output for easier reading
 def PrintWithColor(txt, color, width=None):
     text_block = txt
     if width:
@@ -47,6 +58,7 @@ def Magenta(txt, width=None):
 def Red(txt, width=None):
     return PrintWithColor(txt, Fore.RED, width)
 
+# Print the specemin summary
 def PrintSpecimen(specimen, dbgap_study_id):
     print(f"""\n{Cyan(specimen.id, 8)} ID: {Magenta(specimen.sample_id, 10)} Tissue Affected Status: {Yellow(specimen.tissue_affected_status, 8)}""")
     if specimen.dbgap_id != "":
@@ -56,12 +68,15 @@ def PrintSpecimen(specimen, dbgap_study_id):
     if body_site:
         print(f"""Body Site: {Red(body_site[0])} {Blue(body_site[1])}""")
 
+# Print the disease details
 def PrintDisease(disease):
     print(f"""\t{Green(disease.code, 12)} {Magenta(disease.status, 12)} {Blue(disease.text)}""")
 
+# Print the Phenotype
 def PrintPhenotype(pheno, trait_status):
     print(f"""\t{trait_status} {Yellow(pheno.code, 8)} {Magenta(pheno.status, 8)} {Magenta(pheno.name)}""")
 
+# Print the variants
 def PrintVariant(variant):
     print(f"""\t{Green(variant.id, 10)} {Magenta(variant.identifier.value)}""")
 
@@ -101,7 +116,8 @@ def PrintVariant(variant):
     if sig:
         print(f"""\t\tSignificance:        {Magenta(sig.coding.code, 8)}""")
 
-
+# The Patient acts as the mastermind for the print statements and will
+# call on any relevant prints required
 def PrintPatient(patient):
     print(f"""{Cyan(patient.id, 8)} ID: {Magenta(patient.subject_id, 10)} Sex: {Yellow(patient.sex, 8)} Race:Ethnicity {Red(patient.race + ":" + patient.eth)}""")
     print(f"""dbGaP: {Green(patient.dbgap_study_id)}@{Blue(patient.dbgap_study_id)}""")
@@ -149,7 +165,8 @@ def PrintPatient(patient):
                 for var in variants:
                     PrintVariant(variants[var])
 
-
+# Simple wrapper around listing N subjects and letting the user choose
+# one (or exit)
 def ChoosePatient(patients, max_shown=25):
     patient_idx = 0
     patient_count = len(patients)
@@ -181,8 +198,15 @@ def ChoosePatient(patients, max_shown=25):
     return p
 
 if __name__=='__main__':
+    # For now, this assumes you have the hosts listed in a 
+    # dot rc file, ~/.ncpi_fhir_rc
+    # TODO Write a quick description on how to create that
+    # This config is used to establish the host and configure
+    # the relevant authentication components for it. 
     config = DataConfig.config(hosts_only=True)
 
+    # Just capture the available environments to let the user
+    # make the selection at runtime
     env_options = config.list_environments()
 
     parser = ArgumentParser()
@@ -194,22 +218,31 @@ if __name__=='__main__':
 
     args = parser.parse_args()
 
+    # The host's details are a part of that configured environment
     fhir_host = config.set_host(args.env)
+
+    # Get a list of each of the research study objects
     studies = ResearchStudy.Studies(fhir_host)
     study_list = sorted(studies.keys())
     print(f"The following studies were found: ")
+
+    # Iterate over them so the user can see what to choose from
     for study_name in sorted(study_list):
         print(f"\t{Fore.CYAN}{study_name}{Fore.RESET}")
 
+    # Exit if there isn't any data in the server
     if len(study_list) == 0:
         sys.stderr(f"{Fore.RED}There are no studies to look over at the host {args.env}{Fore.RESET}\n")
         sys.exit(1)
 
+    # No need to get anything from the user if there is only one to 
+    # choose from
     if len(study_list) == 1:
         study = args.study_list[0]
     else:
         study = None
     
+    # We'll default to whatever is the first in the list
     default = study_list[0]
     while study is None:
         study = input(f"Please Select a Study To View [{default}]: ").strip()
@@ -223,10 +256,15 @@ if __name__=='__main__':
             study = None
 
     print(f"Moving forward with the study: {Fore.YELLOW}{study.id}{Fore.RESET}")
+
+    # Use the study object to pull each of the patients
+    # TODO: I could certainly make life better by pulling them in 
+    # chunks...
     patients = study.Patients()
 
+    # Loop until the user is done, letting them choose a patient to 
+    # review
     selected_patient = None
-
     while selected_patient == None:
         selected_patient = ChoosePatient(patients)
         PrintPatient(selected_patient)
