@@ -2,6 +2,7 @@
 from re import compile
 
 from pprint import pformat
+from fhir_walk.model.variants import Variant
 
 class Specimen:
 	sample_id_regex = compile("http://ncpi-api-dataservice.kidsfirstdrc.org/biospecimens\?study_id=(?P<study>[A-Za-z0-9-]+)&external_aliquot_id=")
@@ -35,19 +36,23 @@ class Specimen:
 
 		self.body_site = ''
 		if 'collection' in data:
-			site_coding = data['collection']['bodySite']['coding'][0]
+			if 'bodySite' in data['collection']:
+				site_coding = data['collection']['bodySite']['coding'][0]
 
-			if 'display' not in site_coding:
-				self.body_site = (site_coding['code'], '')
-			else:
-				self.body_site = (site_coding['code'], site_coding['display'])
+				if 'display' not in site_coding:
+					self.body_site = (site_coding['code'], '')
+				else:
+					self.body_site = (site_coding['code'], site_coding['display'])
 
-			# Now for the fun part, let's try and get the tissue_affected_status
-			payload = self.host.get(f"Observation?specimen=Specimen/{self.id}")
-			for data_chunk in payload.entries:
-				if 'resource' in data_chunk:
-					coding = data_chunk['resource']['code']['coding'][0]
-					self.tissue_affected_status = coding['system']
+		# Now for the fun part, let's try and get the tissue_affected_status
+		payload = self.host.get(f"Observation?specimen=Specimen/{self.id}")
+		for data_chunk in payload.entries:
+			if 'resource' in data_chunk:
+				coding = data_chunk['resource']['code']['coding'][0]
+				self.tissue_affected_status = coding['system']
+
+	def variants(self):
+		return Variant.VariantsBySpecimen(self.id, self.host)
 
 	@classmethod
 	def SpecimenByPatient(cls, patient_id, host):

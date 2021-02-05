@@ -14,7 +14,10 @@ class Phenotype:
 
 		self.id = data['id']
 		self.code = data['code']['coding'][0]['code']
-		self.name = data['code']['coding'][0]['display']
+		if 'display' in data['code']['coding'][0]:
+			self.name = data['code']['coding'][0]['display']
+		else:
+			self.name = ""
 		self.status = data['interpretation'][0]['coding'][0]['display']
 
 	@classmethod

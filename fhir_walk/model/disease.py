@@ -20,7 +20,8 @@ class Disease:
 			# For now, we are looking only at the first code
 			if 'coding' in data['code']:
 				self.code = data['code']['coding'][0]['code']
-				self.text = data['code']['coding'][0]['display']
+				if 'display' in data['code']['coding'][0]:
+					self.text = data['code']['coding'][0]['display']
 
 
 
@@ -31,7 +32,8 @@ class Disease:
 		diseases = {}
 
 		for data_chunk in payload.entries:
-			disease = Disease(host, data_chunk['resource'])
-			diseases[disease.code] = disease
+			if 'resource' in data_chunk:
+				disease = Disease(host, data_chunk['resource'])
+				diseases[disease.code] = disease
 
 		return diseases
