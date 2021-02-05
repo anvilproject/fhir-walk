@@ -4,11 +4,11 @@
 
 """This script can be used to interactively explore data in a fhir server, as long as it conforms to the current NCPI FHIR model. Users can choose a study to inspect and iteratively look at subjects and their related Disease/Phenotype/Variant information"""
 
-"""More useful, perhaps, is that it provides an example of using the OO wrapper library I wrote for eploying unit tests for my ingestion scripts
+"""More useful, perhaps, is that it provides an example of using the OO wrapper library I wrote for using with unit tests for my ingestion scripts
 
 Currently, the "display" assumes a fairly wide terminal (probably 100 characters or so)
 
-The philosphy behind the walker library is largely to pull only what is needed. So, if you get all studies, you really only get the information required to query the server for the relevant subjects. For intermediate objects, like ResearchSubject, that information gets absorbed into the Patient objects, rather than being captured as standalone objects. 
+The philosophy behind the walker library is largely to pull only what is needed. So, if you get all studies, you really only get the information required to query the server for the relevant subjects. For intermediate objects, like ResearchSubject, that information gets absorbed into the Patient objects, rather than being captured as standalone objects. 
 
 """
 
@@ -58,7 +58,7 @@ def Magenta(txt, width=None):
 def Red(txt, width=None):
     return PrintWithColor(txt, Fore.RED, width)
 
-# Print the specemin summary
+# Print the specimen summary
 def PrintSpecimen(specimen, dbgap_study_id):
     print(f"""\n{Cyan(specimen.id, 8)} ID: {Magenta(specimen.sample_id, 10)} Tissue Affected Status: {Yellow(specimen.tissue_affected_status, 8)}""")
     if specimen.dbgap_id != "":
