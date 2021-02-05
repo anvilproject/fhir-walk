@@ -22,7 +22,7 @@ from fhir_walk.model.specimen import Specimen
 
 from pprint import pformat
 
-
+import pdb
 
 class Patient:
 	study_regex = compile("https://ncpi-api-dataservice.kidsfirstdrc.org/(participants|research_subjects)\?study_id=(?P<study>[A-Za-z0-9-]+)&external_id=")
@@ -42,11 +42,18 @@ class Patient:
 		if data['resourceType'] == 'ResearchSubject':
 			patient_data = host.get(data['individual']['reference']).entries[0]
 
+			first_value = None
 			for identifier in data['identifier']:
 				g = Patient.study_regex.search(identifier['system'])
 
+				if first_value is None:
+					first_value = identifier['value']
+
 				if g is not None:
 					self.research_subject_id = identifier['value']
+
+			if self.research_subject_id is None:
+				self.research_subject_id = first_value
 
 		else:
 			patient_data = data
@@ -63,7 +70,10 @@ class Patient:
 		# Subject ID is the actual id from the study, whereas, id is the
 		# unique ID associated with the FHIR data store
 		self.subject_id = None
+		first_value = None
 		for identifier in patient_data['identifier']:
+			if first_value is None:
+				first_value = identifier['value']
 			g = Patient.study_regex.search(identifier['system'])
 
 			if g is not None:
@@ -75,6 +85,8 @@ class Patient:
 				if g is not None:
 					self.dbgap_study_id = g.group('study')
 					self.dbgap_id = identifier['value']
+		if self.subject_id is None:
+			self.subject_id = first_value
 	
 		if "extension" in patient_data:
 			for ex in patient_data['extension']:
@@ -119,6 +131,8 @@ class Patient:
 
 	@classmethod
 	def PatientsByStudy(cls, study_id, host):
+		#print(f"--> ResearchSubject?study=ResearchStudy/{study_id}")
+		#pdb.set_trace()
 		payload = host.get(f"ResearchSubject?study=ResearchStudy/{study_id}")
 
 		patients = {}
