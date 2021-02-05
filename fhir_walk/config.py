@@ -26,7 +26,7 @@ class DataConfig:
 
     _cfg = None     # Cheesy Singleton to allow downstream objects to acquire the preconfigured environment
 
-    def __init__(self, data_config=None, host_config=None, dataroot=None ):
+    def __init__(self, data_config=None, host_config=None, dataroot=None, hosts_only=False ):
         """We'll permit client applications to use an alternate storage mechanism for the configurat details.
 
         * config_file is the actual yaml config
@@ -45,7 +45,7 @@ class DataConfig:
         self.cur_environment = 'dev'
         self.host_cache = None
 
-        use_default = not self._load_cfg(host_config, data_config)
+        use_default = not self._load_cfg(host_config, data_config, hosts_only)
 
         if len(self.hosts) == 0 or self.dataroot is None:
             with open(host_file, 'wt') as f:
@@ -90,12 +90,13 @@ dataroot: {Path.cwd()}""")
         """Return the FhirHost object"""
         return self.host
 
-    def _load_cfg(self, host_config=None, data_config=None):
+    def _load_cfg(self, host_config=None, data_config=None, hosts_only=False):
         """Loads configuration (filename=None will load the default)"""
         if host_config is None:
             host_config = self.host_config
         if data_config is None:
             data_config = self.data_config
+
         successes = 0
 
         config = safe_load(open(host_config, 'rt'))
@@ -105,11 +106,11 @@ dataroot: {Path.cwd()}""")
             if 'datasets' in config:
                 self.datasets = config['datasets']
             successes += 1
-
-        config = safe_load(open(data_config, 'rt'))
-        if config:
-            self.datasets = config['datasets']
-            successes += 1
+        if not hosts_only:
+            config = safe_load(open(data_config, 'rt'))
+            if config:
+                self.datasets = config['datasets']
+                successes += 1
         
         return False
 
@@ -123,11 +124,11 @@ dataroot: {Path.cwd()}""")
             f.write("hosts:")
 
     @classmethod
-    def config(cls, config_file=None, dataroot = None, env=None):
+    def config(cls, config_file=None, dataroot = None, env=None, hosts_only=False):
         """Return singleton if it hasn't been instantiated. Instantiate if any of the parameters differ from current settings (or default)"""
 
         if cls._cfg is None or (config_file is not None and cls._cfg.filename != config_file):
-            cls._cfg = DataConfig(config_file, dataroot)
+            cls._cfg = DataConfig(config_file, dataroot, hosts_only=hosts_only)
 
         if env is not None:
             cls._cfg.set_host(env)
