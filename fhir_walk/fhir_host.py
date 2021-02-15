@@ -9,8 +9,9 @@ and testing.
 Dependencies: ncpi_fhir_utility
 """
 from ncpi_fhir_utility.client import FhirApiClient
-
+import subprocess
 from pprint import pformat
+import pdb
 
 class FhirResult:
     """Wrap the return value a bit to make interacting with it a bit more smoother"""
@@ -59,12 +60,13 @@ class FhirHost:
         self.username = kwargs.get('username')
         self.password = kwargs.get('password')
         self.cookie = kwargs.get('cookie')
+        self.service_token = kwargs.get('service_account_token')
 
         # URL associated with the host. If it's a non-standard port, use appropriate URL:XXXXX format
         self.target_service_url = kwargs.get('target_service_url')
 
         self.is_valid = False
-
+        self.google_identity = False
         self._client = None         # Cache the client so we don't have to rebuild it between calls
 
         if cfg is not None:
@@ -75,16 +77,28 @@ class FhirHost:
             if 'cookie' in cfg:
                 self.cookie = cfg['cookie']
 
+            if 'service_account_token' in cfg:
+                self.service_token = cfg['service_account_token']
+                print("We are using a service account token (or pretending to)")
+
             if 'target_service_url' in cfg:
                 self.target_service_url = cfg['target_service_url']
 
         self.is_valid = self.target_service_url is not None and (
                 (self.username is not None and self.password is not None)  or
-                (self.cookie is not None))
+                (self.cookie is not None) or
+                (self.target_service_url is not None) )
+
+        # Deal with google's service account authentication
+        if self.service_token is not None:
+            self.google_identity = True
+
+            #from google.cloud import storage
+            #self.storage_client = storage.Client.from_service_account_json(self.service_token)
 
     def auth(self):
         """Return basic authorization tuple. Currently assumes cookie means no username/password"""
-        if self.cookie is None:
+        if self.cookie is None and not self.google_identity:
             return (self.username, self.password)
 
     def client(self):
@@ -112,7 +126,11 @@ class FhirHost:
             url = f"{self.target_service_url}/"
 
 
-
+    def get_google_identity(self):
+        #pdb.set_trace()
+        token = subprocess.check_output(['gcloud','auth','application-default', 'print-access-token'])
+        token = token.decode('utf8').strip()
+        return "Bearer " + token
 
     def get(self, resource, recurse=True):
         """Default to recurse down the chain of 'next' links
@@ -123,6 +141,11 @@ class FhirHost:
         if self.cookie:
             cheaders['cookie'] = self.cookie
 
+        #print(self.google_identity)
+        if self.google_identity:
+            cheaders['Authorization'] = self.get_google_identity()
+            print("Doin' the holka polkey")
+
         count = "?_count=250"
 
         if "?" in resource:
@@ -132,6 +155,7 @@ class FhirHost:
         success, result = self.client().send_request("GET", f"{url}", headers=cheaders)
        
         if not success:
+            print("There was a problem with the request for the GET")
             print(pformat(result))
 
         # For now, let's just give up if there was a problem
