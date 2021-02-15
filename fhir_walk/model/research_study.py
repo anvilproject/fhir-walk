@@ -1,6 +1,7 @@
 """Parse research study objects"""
 
 from fhir_walk.model.patient import Patient
+from fhirwood.identifier import Identifier
 from pprint import pformat
 
 class ResearchStudy:
@@ -9,7 +10,9 @@ class ResearchStudy:
 		self.host = host		
 		self.raw = data
 		self.id = data['resource']['id']
-		self.identifiers = data['resource']['identifier']
+		self.identifier = Identifier(block=data['resource']['identifier'])
+
+		self.title = self.identifier.value
 		if 'title' in data['resource']:
 			self.title = data['resource']['title']
 
@@ -21,7 +24,7 @@ class ResearchStudy:
 		studies = {}
 		for data_chunk in data.entries:
 			study = ResearchStudy(host, data_chunk)
-			studies[study.id] = study
+			studies[study.title] = study
 		return studies
 
 	def Patients(self):
