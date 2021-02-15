@@ -238,7 +238,7 @@ if __name__=='__main__':
     # No need to get anything from the user if there is only one to 
     # choose from
     if len(study_list) == 1:
-        study = args.study_list[0]
+        study = studies[study_list[0]]
     else:
         study = None
     
