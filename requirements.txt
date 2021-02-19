@@ -1,3 +1,5 @@
 ncpi_fhir_utility >= 0.1.0
 
 fhirwood >= 0.1.0
+PyJWT
+cryptography
