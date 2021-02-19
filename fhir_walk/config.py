@@ -71,6 +71,7 @@ dataroot: {Path.cwd()}""")
     def set_host(self, env='dev'):
         """TODO- Should we support having multiple hosts active at once? Currently, there isn't a clear cut use case for it"""
         self.cur_environment = env
+        assert env in self.hosts
         self.host = FhirHost.host(cfg=self.hosts[env])
         return self.host
 
