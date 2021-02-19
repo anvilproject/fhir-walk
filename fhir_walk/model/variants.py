@@ -53,7 +53,6 @@ class VariantReport:
 
 	@classmethod
 	def VariantReportsBySubject(cls, subject_id, host):
-		print(f"DiagnosticReport?subject=Patient/{subject_id}")
 		payload = host.get(f"DiagnosticReport?subject=Patient/{subject_id}")
 
 		reports = []
@@ -97,9 +96,7 @@ class Variant:
 		# the right ones out of the list by considering the derivedFrom property
 		id_ref = f"Observation/{self.id}"
 
-		#print(payload.entries)
 		for data_chunk in payload.entries:
-			#print(data_chunk)
 			if 'resource' in data_chunk:
 				data_chunk = data_chunk['resource']
 				ref = Reference(block=data_chunk['derivedFrom'])

@@ -132,7 +132,6 @@ class Patient:
 	@classmethod
 	def PatientsByStudy(cls, study_id, host):
 		#print(f"--> ResearchSubject?study=ResearchStudy/{study_id}")
-		#pdb.set_trace()
 		payload = host.get(f"ResearchSubject?study=ResearchStudy/{study_id}")
 
 		patients = {}
