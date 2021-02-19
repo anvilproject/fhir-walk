@@ -61,6 +61,9 @@ class FhirHost:
         self.password = kwargs.get('password')
         self.cookie = kwargs.get('cookie')
         self.service_token = kwargs.get('service_account_token')
+        self.client_token = kwargs.get('oa2_client_token')
+        #pdb.set_trace()
+        self.google_auth = None
 
         # URL associated with the host. If it's a non-standard port, use appropriate URL:XXXXX format
         self.target_service_url = kwargs.get('target_service_url')
@@ -79,22 +82,22 @@ class FhirHost:
 
             if 'service_account_token' in cfg:
                 self.service_token = cfg['service_account_token']
-                print("We are using a service account token (or pretending to)")
+                from fhir_walk.google_token import GoogleAuth
+                self.google_auth = GoogleAuth(target_service=self.service_token)
+                self.google_identity = True
+
+            elif 'oa2_client_token' in cfg:
+                self.client_token = cfg['oa2_client_token']
+                from fhir_walk.google_token import GoogleAuth
+                self.google_auth = GoogleAuth(oa2_client=self.client_token)
+                self.google_identity = True
 
             if 'target_service_url' in cfg:
                 self.target_service_url = cfg['target_service_url']
 
         self.is_valid = self.target_service_url is not None and (
                 (self.username is not None and self.password is not None)  or
-                (self.cookie is not None) or
-                (self.target_service_url is not None) )
-
-        # Deal with google's service account authentication
-        if self.service_token is not None:
-            self.google_identity = True
-
-            #from google.cloud import storage
-            #self.storage_client = storage.Client.from_service_account_json(self.service_token)
+                (self.cookie is not None) or self.google_identity)
 
     def auth(self):
         """Return basic authorization tuple. Currently assumes cookie means no username/password"""
@@ -125,11 +128,11 @@ class FhirHost:
 
             url = f"{self.target_service_url}/"
 
-
     def get_google_identity(self):
         #pdb.set_trace()
-        token = subprocess.check_output(['gcloud','auth','application-default', 'print-access-token'])
-        token = token.decode('utf8').strip()
+        token = self.google_auth.access_token()
+        #token = subprocess.check_output(['gcloud','auth','application-default', 'print-access-token'])
+        #token = token.decode('utf8').strip()
         return "Bearer " + token
 
     def get(self, resource, recurse=True):
@@ -144,7 +147,6 @@ class FhirHost:
         #print(self.google_identity)
         if self.google_identity:
             cheaders['Authorization'] = self.get_google_identity()
-            print("Doin' the holka polkey")
 
         count = "?_count=250"
 
