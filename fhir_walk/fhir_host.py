@@ -8,10 +8,16 @@ and testing.
 
 Dependencies: ncpi_fhir_utility
 """
+import logging
+logger = logging.getLogger(__name__)
 from ncpi_fhir_utility.client import FhirApiClient
 import subprocess
 from pprint import pformat
+
+
 import pdb
+
+
 
 class FhirResult:
     """Wrap the return value a bit to make interacting with it a bit more smoother"""
@@ -47,7 +53,6 @@ class FhirResult:
         self.entries += self.response['entry']
         self.entry_count = len(self.entries)   
 
-
 # TODO: This is just a hasty solution, but if there is real interest, this should be turned into
 # an iterable class rather than bulk capture of entire list of data
 class FhirHost:
@@ -62,6 +67,10 @@ class FhirHost:
         self.cookie = kwargs.get('cookie')
         self.service_token = kwargs.get('service_account_token')
         self.client_token = kwargs.get('oa2_client_token')
+        self.host_desc = kwargs.get('host_desc')
+
+        if self.host_desc is None:
+            self.host_desc = 'No Description'
         #pdb.set_trace()
         self.google_auth = None
 
@@ -73,6 +82,8 @@ class FhirHost:
         self._client = None         # Cache the client so we don't have to rebuild it between calls
 
         if cfg is not None:
+            if 'host_desc' in cfg:
+                self.host_desc = cfg['host_desc']
             if 'username' in cfg:
                 self.username = cfg['username']
                 self.password = cfg['password']
@@ -98,6 +109,10 @@ class FhirHost:
         self.is_valid = self.target_service_url is not None and (
                 (self.username is not None and self.password is not None)  or
                 (self.cookie is not None) or self.google_identity)
+        self.host_desc = self.host_desc.replace("/", "-")
+    def init_log(self):
+        self.logger = logging.getLogger(__name__)
+        self.logger.error("\n\n\nThis is a test")
 
     def auth(self):
         """Return basic authorization tuple. Currently assumes cookie means no username/password"""
@@ -112,7 +127,56 @@ class FhirHost:
             )
         return self._client
 
-    def put(self, resource, data, validate_only=False):
+    def get_login_header(self, headers = {}):
+        # Slip authentication details into header
+        if "Content-Type" not in headers:
+            headers.update(self.client()._fhir_version_headers())
+
+        # Deal with the cookie stuff, if it's appropriate
+        if self.cookie:
+            headers['cookie'] = self.cookie
+        if self.google_identity:
+            headers['Authorization'] = self.get_google_identity()
+
+        return headers
+
+    def delete_by_record_id(self, resource, id):
+        cheaders = self.get_login_header()
+        endpoint = f"{self.target_service_url}/{resource}/{id}"
+        success, result = self.client().send_request("delete", endpoint, headers=cheaders )
+        if not success:
+            self.logger.error(pformat(result))
+        return result
+
+    # TODO: Allow this function to pull the data first and merge changes in
+    def update(self, resource, id, data):
+        cheaders = self.get_login_header()
+        endpoint = f"{self.target_service_url}/{resource}/{id}"
+
+        print(cheaders['Content-Type'])
+        #pdb.set_trace()
+
+        #pdb.set_trace()
+        success, result = self.client().send_request(
+                                "put", endpoint, 
+                                json=data, 
+                                headers=cheaders)
+
+        return result
+
+    def patch(self, resource, id, data):
+        cheaders = self.get_login_header()
+        cheaders['Content-Type'] = 'application/json-patch+json'
+        endpoint = f"{self.target_service_url}/{resource}/{id}"
+        #pdb.set_trace()
+        success, result = self.client().send_request(
+                                "patch", endpoint, 
+                                json=data, 
+                                headers=cheaders)
+
+        return result        
+
+    def post(self, resource, data, validate_only=False):
         """validate_only will append the $validate to the end of the final url"""
         objs = data
 
@@ -120,13 +184,23 @@ class FhirHost:
             objs = [data]
 
         for obj in objs:
-            cheaders = self.client()._fhir_version_headers()
+            cheaders = self.get_login_header()
 
-            # Deal with the cookie stuff, if it's appropriate
-            if self.cookie:
-                cheaders['cookie'] = self.cookie
+            endpoint = f"{self.target_service_url}/{resource}"
+            if validate_only:
+                endpoint += "/$validate"
 
-            url = f"{self.target_service_url}/"
+            kwargs = {
+                'json': data
+            }
+
+            success, result = self.client().send_request(
+                                "POST", 
+                                endpoint, 
+                                json=data, 
+                                headers=cheaders)
+
+            return result
 
     def get_google_identity(self):
         #pdb.set_trace()
@@ -135,7 +209,7 @@ class FhirHost:
         #token = token.decode('utf8').strip()
         return "Bearer " + token
 
-    def get(self, resource, recurse=True):
+    def get(self, resource, recurse=True, no_count=False):
         """Default to recurse down the chain of 'next' links
 
         Please note that this is currently not very robust and works with our CMG data. 
@@ -148,10 +222,12 @@ class FhirHost:
         if self.google_identity:
             cheaders['Authorization'] = self.get_google_identity()
 
-        count = "?_count=250"
+        count=""
+        if not no_count:
+            count = "?_count=250"
 
-        if "?" in resource:
-            count = "&_count=250"
+            if "?" in resource:
+                count = "&_count=250"
 
         url = f"{self.target_service_url}/{resource}{count}"
         success, result = self.client().send_request("GET", f"{url}", headers=cheaders)
