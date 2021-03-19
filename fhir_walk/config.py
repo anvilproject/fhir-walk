@@ -47,16 +47,17 @@ class DataConfig:
 
         use_default = not self._load_cfg(host_config, data_config, hosts_only)
 
-        if len(self.hosts) == 0 or self.dataroot is None:
+        if len(self.hosts) == 0:
             with open(host_file, 'wt') as f:
                 f.write(f"""hosts:
     dev:
         username: {os.getenv('FHIR_USERNAME', 'admin')}
         password: {os.getenv('FHIR_PASSWORD', 'password')}
+        host_desc: 'Smile_on_Docker/dev'
         target_service_url: {os.getenv('FHIR_HOST', 'http://localhost:8000')}
 dataroot: {Path.cwd()}""")
             print(f"Default hosts file written to '{str(host_file)}'.")
-        if len(self.datasets) == 0:
+        if len(self.datasets) == 0 and (not hosts_only):
             with open(data_config, 'wt') as f:
                 f.write(f"""datasets:
     FAKE-CMG:
@@ -66,7 +67,7 @@ dataroot: {Path.cwd()}""")
         discovery: example-cmg/FakeData_CMG_Discovery.tsv
         sequencing: example-cmg/FakeData_CMG_Sequencing.tsv
 """)
-            print(f"A fresh datasets was generated at the path: '{str(data_config)}'.")
+            print(f"A fresh dataset rc file was generated at the path: '{str(data_config)}'.")
 
     def set_host(self, env='dev'):
         """TODO- Should we support having multiple hosts active at once? Currently, there isn't a clear cut use case for it"""
@@ -74,6 +75,11 @@ dataroot: {Path.cwd()}""")
         assert env in self.hosts
         self.host = FhirHost.host(cfg=self.hosts[env])
         return self.host
+
+    def host_desc(self):
+        if self.host:
+            return self.host.host_desc
+        return 'No Host Defined'
 
     def get_dataset(self, dataset):
         """Returns the dataset details (dict) for each of the different purposes: sample, family, subject, etc"""
