@@ -13,16 +13,16 @@ dbgap_id
 """
 
 # TODO -- Add support for extended family
-
 from re import compile
 
 from fhir_walk.model.disease import Disease
 from fhir_walk.model.phenotypes import Phenotype
 from fhir_walk.model.specimen import Specimen
+from fhir_walk.model import unwrap_bundle
 
 from pprint import pformat
 
-import pdb
+
 
 class Patient:
 	study_regex = compile("https://ncpi-api-dataservice.kidsfirstdrc.org/(participants|research_subjects)\?study_id=(?P<study>[A-Za-z0-9-]+)&external_id=")
@@ -144,5 +144,6 @@ class Patient:
 
 	@classmethod
 	def PatientBySubjectID(cls, study_id, subject_id, host):
-		payload = host.get(f"Patient?identifier={subject_id}")
-		return Patient(host, payload)
+		payload = unwrap_bundle(host.get(f"Patient?identifier={subject_id}").response)
+		return Patient(host, payload['resource'])
+
