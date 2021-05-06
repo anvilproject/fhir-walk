@@ -1,3 +1,8 @@
+# Some project specific stuff
+# The fhir hosts will be convenient to the test runner, but shouldn't actually
+# get checked in
+fhir_hosts 
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
