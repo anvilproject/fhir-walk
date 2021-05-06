@@ -1,5 +1,5 @@
-ncpi_fhir_utility >= 0.1.0
+ncpi_fhir_utility @ git+https://git@github.com/ncpi-fhir/ncpi-fhir-utility.git
 
-fhirwood >= 0.1.0
+fhirwood @ git+https://github.com/anvilproject/fhirwood.git
 PyJWT
 cryptography
