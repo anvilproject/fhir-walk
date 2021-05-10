@@ -1,8 +1,6 @@
 import os
 from setuptools import setup, find_packages
 
-from ncpi_fhir_utility.config import FHIR_VERSION
-
 from fhir_walk import __version__
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
