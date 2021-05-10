@@ -11,7 +11,7 @@ with open(req_file) as f:
 setup(
     name="fhir-walk",
     version = __version__,
-    description=f"AnVIL FHIR Walker {FHIR_VERSION}",
+    description=f"AnVIL FHIR Walker {__version__}",
     packages=find_packages(),
     include_package_data=True,
     install_requires=requirements,
