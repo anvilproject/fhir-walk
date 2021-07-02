@@ -60,7 +60,9 @@ class Patient:
 
 
 		self.id = patient_data['id']
-		self.sex = patient_data['gender']
+		self.sex = ""
+		if 'gender' in patient_data:
+			self.sex = patient_data['gender']
 		self.race = ""
 		self.eth = ""
 		self.study = ""
@@ -141,6 +143,15 @@ class Patient:
 			patient = Patient(host, data_chunk['resource'])
 			patients[patient.subject_id] = patient
 		return patients
+
+	@classmethod
+	def PatientByRef(cls, ref, host):
+		return Patient.PatientByID(ref.split("/")[-1], host)
+
+	@classmethod
+	def PatientByID(cls, id, host):
+		payload = host.get(f"Patient/{id}").response
+		return Patient(host, payload)
 
 	@classmethod
 	def PatientBySubjectID(cls, study_id, subject_id, host):
